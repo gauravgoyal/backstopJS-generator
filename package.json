@@ -1,0 +1,21 @@
+{
+  "name": "backstopjs-generator",
+  "version": "1.0.0",
+  "description": "A generator plugin to generate backstopjs scenarios.",
+  "main": "backstopjs-generator.js",
+  "scripts": {
+    "reference": "backstop reference",
+    "comparision": "backstop test",
+    "default": "backstop init",
+    "generate": "node backstopjs-generator.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "backstopjs": "^5.0.1",
+    "cheerio": "^1.0.0-rc.3",
+    "dotenv": "^8.2.0",
+    "request": "^2.88.2",
+    "request-promise": "^4.2.5"
+  }
+}
