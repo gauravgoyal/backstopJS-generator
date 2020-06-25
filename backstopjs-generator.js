@@ -3,11 +3,12 @@ const $ = require('cheerio');
 const rp = require('request-promise');
 const fs = require('fs');
 
-const url = process.env.REFERENCE_URL;
-const testUrl = process.env.TEST_URL;
+const referenceUrl = process.env.REFERENCE_URL;
+const referredUrl = process.env.REFERRED_URL;
+const delay = process.env.DELAY || 2000;
 const selector = process.env.LINK_SELECTOR || 'a';
 
-rp(url).then(html => {
+rp(referenceUrl).then(html => {
   const linkObjects = $(selector, html);
   const links = [];
   // we only need the "href" and "title" of each link
@@ -27,13 +28,12 @@ rp(url).then(html => {
   links.forEach(function(element) {
     scenarios.push({
       "label": element.title,
-      "url": testUrl + element.href,
-      "referenceUrl": url + element.href,
-      "delay": 2000,
+      "url": referredUrl + element.href,
+      "referenceUrl": referenceUrl + element.href,
       "cookiePath": "backstop_data/engine_scripts/cookies.json",
       "readyEvent": "",
       "readySelector": "",
-      "delay": 0,
+      "delay": parseInt(delay),
       "hideSelectors": [],
       "removeSelectors": [],
       "hoverSelector": "",
