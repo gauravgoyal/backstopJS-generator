@@ -1,7 +1,7 @@
 # Description
 This is a fairly simple node js implementation and more of a boilerplate, which aims to automate the scenarios for and regenerates the backstop.json file with default configurations.
 
-This generator automates the generation of scenarios when you want to cover multiple links across multiple websites. For e.g. if you want to run visual regression on all the links under main menu, this generator will automatically generate the scenarios for the links under main menu.
+This generator automates the scenarios generation process. For e.g. if you want to run visual regression on all the links under main menu, this generator get all those links, and will generate the scenarios.
 
 ## Installation steps
 * Install latest version of node.js. Download it from [here](https://nodejs.org/en/download/)
@@ -20,4 +20,4 @@ This generator automates the generation of scenarios when you want to cover mult
 Once backstop js generates the configuration, its role is finished. If you want to change any of the configuration within scnearios, those should happen inside backstop.json or you can change backstopjs-generator.js.
 
 ## Credits
-Thanks to [BackstopJS](https://github.com/garris/BackstopJS) for creating this wonderful tool.
+Thanks to [BackstopJS](https://github.com/garris/BackstopJS) for creating a wonderful tool visual regression tool.
