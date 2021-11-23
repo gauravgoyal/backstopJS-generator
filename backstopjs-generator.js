@@ -1,7 +1,8 @@
 require('dotenv').config();
-const $ = require('cheerio');
+const cheerio = require('cheerio');
 const rp = require('request-promise');
 const fs = require('fs');
+const url = require('url');
 
 const referenceUrl = process.env.REFERENCE_URL;
 const referredUrl = process.env.REFERRED_URL;
@@ -9,17 +10,24 @@ const delay = process.env.DELAY || 2000;
 const selector = process.env.LINK_SELECTOR || 'a';
 
 rp(referenceUrl).then(html => {
-  const linkObjects = $(selector, html);
+  const $ = cheerio.load(html);
+  const linkObjects = $(selector);
   const links = [];
   // we only need the "href" and "title" of each link
 
   linkObjects.each(function (index, element) {
     let title = $(element).text().replace(/(\r\n|\n|\r)/gm, "").trim();
-    if (title !== undefined && title != '' &&  element.attribs.href != '#' && !links.some(el => el.href === element.attribs.href)) {
-      links.push({
-          href: element.attribs.href,
-          title: title
-      });
+    let href = element.attribs.href;
+    let baseUrlParse = url.parse(href);
+    let refBaseUrl = url.parse(referenceUrl).hostname;
+    let baseUrl = baseUrlParse.hostname;
+    if (baseUrl === null || refBaseUrl.indexOf(baseUrl) === 0) {
+      if (title !== undefined && title != '' &&  href != '#' && !links.some(el => el.href === href) ) {
+        links.push({
+            href: baseUrlParse.path,
+            title: title
+        });
+      }
     }
   })
 
