@@ -17,7 +17,7 @@
   },
   "scripts": {
     "test": "jest",
-    "generate-config": "backstop init && node generateBackstopConfig.js",
+    "generate-config": "backstop init && node backstopjs-generator.js",
     "test-backstop": "backstop test --configPath=backstop.json",
     "approve-backstop": "backstop approve --configPath=backstop.json",
     "reference-backstop": "backstop reference --configPath=backstop.json"
