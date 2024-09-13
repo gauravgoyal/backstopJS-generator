@@ -115,13 +115,18 @@ const generateBackstopConfig = async () => {
         label: "tablet",
         width: 1024,
         height: 768
+      },
+      {
+        "label": "desktop",
+        "width": 1366,
+        "height": 768
       }
     ],
     onBeforeScript: "playwright/onBefore.js",
     onReadyScript: "playwright/onReady.js",
     scenarioDefaults: {
       cookiePath: "backstop_data/engine_scripts/cookies.json",
-      url: process.env.WEBSITE_URL,
+      url: process.env.WEBSITE_BASE_URL,
       readySelector: "",
       delay: parseInt(process.env.DELAY, 10) || 0,
       hideSelectors: process.env.HIDE_SELECTORS ? process.env.HIDE_SELECTORS.split(',') : [],
@@ -140,8 +145,8 @@ const generateBackstopConfig = async () => {
       return {
         label: link.text || link.href,
         cookiePath: "backstop_data/engine_scripts/cookies.json",
-        url: link.href,
-        referenceUrl: referenceUrl,
+        url: referenceUrl,
+        referenceUrl: link.href,
         readyEvent: "",
       };
     }),
