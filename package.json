@@ -1,21 +1,28 @@
 {
-  "name": "backstopjs-generator",
-  "version": "1.0.0",
-  "description": "A generator plugin to generate backstopjs scenarios.",
-  "main": "backstopjs-generator.js",
-  "scripts": {
-    "reference": "backstop reference",
-    "comparision": "backstop test",
-    "default": "backstop init",
-    "generate": "node backstopjs-generator.js"
-  },
-  "author": "",
-  "license": "ISC",
+  "name": "backstopJS-generator",
+  "version": "1.1.0",
+  "description": "Node application to generate backstop config",
+  "main": "index.js",
+  "repository": "git@github.com:gauravgoyal/backstopJS-generator.git",
+  "author": "Gaurav Goyal",
+  "license": "MIT",
   "dependencies": {
-    "backstopjs": "^6.0.4",
-    "cheerio": "^1.0.0-rc.3",
-    "dotenv": "^8.2.0",
-    "request": "^2.88.2",
-    "request-promise": "^4.2.5"
+    "axios": "^1.7.7",
+    "backstopjs": "^6.3.25",
+    "cheerio": "^1.0.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "scripts": {
+    "test": "jest",
+    "generate-config": "backstop init && node generateBackstopConfig.js",
+    "test-backstop": "backstop test --configPath=backstop.json",
+    "approve-backstop": "backstop approve --configPath=backstop.json",
+    "reference-backstop": "backstop reference --configPath=backstop.json"
+  },
+  "jest": {
+    "testEnvironment": "node"
   }
 }

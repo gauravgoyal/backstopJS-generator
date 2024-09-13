@@ -1,93 +1,183 @@
-require('dotenv').config();
+const axios = require('axios');
 const cheerio = require('cheerio');
-const rp = require('request-promise');
 const fs = require('fs');
-const url = require('url');
+require('dotenv').config();
 
-const referenceUrl = process.env.REFERENCE_URL;
-const referredUrl = process.env.REFERRED_URL;
-const delay = process.env.DELAY || 2000;
-const selector = process.env.LINK_SELECTOR || 'a';
+const cache = new Map();
 
-rp(referenceUrl).then(html => {
+// Function to fetch data from a URL and cache it
+const fetchData = async (url) => {
+  if (cache.has(url)) {
+    return cache.get(url);
+  }
+
+  try {
+    const response = await axios.get(url);
+    cache.set(url, response.data);
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching the URL: ${error.message}`);
+    throw error;
+  }
+};
+
+// Helper function to generate text based on URL
+const generateTextFromUrl = (url) => {
+  return url.replace(/https?:\/\/(www\.)?/, '').replace(/\/$/, '').replace(/[-_]/g, ' ').split('/').pop();
+};
+
+// Function to extract links from HTML content based on a selector
+const extractLinksFromHtml = (html, selector) => {
   const $ = cheerio.load(html);
-  const linkObjects = $(selector);
-  const links = [];
-  // we only need the "href" and "title" of each link
+  const links = $(selector);
+  const urls = [];
 
-  linkObjects.each(function (index, element) {
-    let title = $(element).text().replace(/(\r\n|\n|\r)/gm, "").trim();
-    let href = element.attribs.href;
-    let baseUrlParse = url.parse(href);
-    let refBaseUrl = url.parse(referenceUrl).hostname;
-    let baseUrl = baseUrlParse.hostname;
-    if (baseUrl === null || refBaseUrl.indexOf(baseUrl) === 0) {
-      if (title !== undefined && title != '' &&  href != '#' && !links.some(el => el.href === href) ) {
-        links.push({
-            href: baseUrlParse.path,
-            title: title
-        });
-      }
+  links.each((index, element) => {
+    let href = $(element).attr('href');
+    if (!href || !href.includes(process.env.WEBSITE_URL)) {
+      return;
     }
-  })
 
-  const scenarios = [];
+    let text = $(element).text();
+    if (!href.startsWith('http')) {
+      href = `${process.env.WEBSITE_URL}${href}`;
+    }
+    if (!text) {
+      text = generateTextFromUrl(href);
+    }
+    urls.push({ href, text });
+  });
 
-  links.forEach(function(element) {
-    scenarios.push({
-      "label": element.title,
-      "url": referredUrl + element.href,
-      "referenceUrl": referenceUrl + element.href,
-      "cookiePath": "backstop_data/engine_scripts/cookies.json",
-      "readyEvent": "",
-      "readySelector": "",
-      "delay": parseInt(delay),
-      "hideSelectors": [],
-      "removeSelectors": [],
-      "hoverSelector": "",
-      "clickSelector": "",
-      "postInteractionWait": 0,
-      "selectors": [],
-      "selectorExpansion": true,
-      "expect": 0,
-      "misMatchThreshold" : 0.1,
-      "requireSameDimensions": true
-    });
-  })
+  return urls;
+};
 
-  // Generate backstop.json file.
-  var json = {
-    "viewports": [
+// Function to extract links from XML content
+const extractLinksFromXml = async (xml) => {
+  const $ = cheerio.load(xml, { xmlMode: true });
+  const links = $('loc');
+  const urls = [];
+
+  for (const element of links) {
+    const href = $(element).text();
+    let text = generateTextFromUrl(href);
+    if (href.includes('.xml')) {
+      const nestedUrls = await fetchInternalLinksFromSitemap(href);
+      urls.push(...nestedUrls);
+    } else {
+      urls.push({ href, text });
+    }
+  }
+
+  return urls;
+};
+
+// Function to scrap a website for all the internal links based on a HTML selector
+const scrapWebsiteForLinks = async (url, selector) => {
+  const html = await fetchData(url);
+  return extractLinksFromHtml(html, selector);
+};
+
+// Function to fetch all internal links from sitemap of a website
+const fetchInternalLinksFromSitemap = async (url) => {
+  const xml = await fetchData(url);
+  return extractLinksFromXml(xml);
+};
+
+// Main function to fetch links based on .env settings
+const fetchLinks = async () => {
+  try {
+    let links;
+    if (process.env.FETCH_INTERNAL_LINKS_FROM_SITEMAP === 'true') {
+      links = await fetchInternalLinksFromSitemap(process.env.SITEMAP_URL);
+    } else {
+      links = await scrapWebsiteForLinks(process.env.WEBSITE_URL, process.env.LINK_SELECTOR);
+    }
+    return links;
+  } catch (error) {
+    console.error(`Error fetching links: ${error.message}`);
+    return [];
+  }
+};
+
+// Function to generate the backstop configuration
+const generateBackstopConfig = async () => {
+  const links = await fetchLinks();
+
+  const backstopConfig = {
+    id: "backstop_playwright",
+    viewports: [
       {
-        "label": "desktop",
-        "width": 1368,
-        "height": 1600
+        label: "phone",
+        width: 320,
+        height: 480
+      },
+      {
+        label: "tablet",
+        width: 1024,
+        height: 768
       }
     ],
-    "onBeforeScript": "puppet/onBefore.js",
-    "onReadyScript": "puppet/onReady.js",
-    "scenarios": scenarios,
-    "paths": {
-      "bitmaps_reference": "backstop_data/bitmaps_reference",
-      "bitmaps_test": "backstop_data/bitmaps_test",
-      "engine_scripts": "backstop_data/engine_scripts",
-      "html_report": "backstop_data/html_report",
-      "ci_report": "backstop_data/ci_report"
+    onBeforeScript: "playwright/onBefore.js",
+    onReadyScript: "playwright/onReady.js",
+    scenarioDefaults: {
+      cookiePath: "backstop_data/engine_scripts/cookies.json",
+      url: process.env.WEBSITE_URL,
+      readySelector: "",
+      delay: parseInt(process.env.DELAY, 10) || 0,
+      hideSelectors: process.env.HIDE_SELECTORS ? process.env.HIDE_SELECTORS.split(',') : [],
+      removeSelectors: process.env.REMOVE_SELECTORS ? process.env.REMOVE_SELECTORS.split(',') : [],
+      hoverSelector: "",
+      clickSelector: "",
+      postInteractionWait: parseInt(process.env.POST_INTERACTION_WAIT, 10) || 1000,
+      selectors: [],
+      selectorExpansion: true,
+      misMatchThreshold: parseFloat(process.env.MISMATCH_THRESHOLD) || 0.1,
+      requireSameDimensions: true
     },
-    "report": ["browser"],
-    "engine": "puppeteer",
-    "engineOptions": {
-      "args": ["--no-sandbox"]
+    scenarios: links.map(link => {
+      const path = new URL(link.href).pathname;
+      const referenceUrl = `${process.env.REFERENCE_URL}${path}`;
+      return {
+        label: link.text || link.href,
+        cookiePath: "backstop_data/engine_scripts/cookies.json",
+        url: link.href,
+        referenceUrl: referenceUrl,
+        readyEvent: "",
+      };
+    }),
+    paths: {
+      bitmaps_reference: "backstop_data/bitmaps_reference",
+      bitmaps_test: "backstop_data/bitmaps_test",
+      engine_scripts: "backstop_data/engine_scripts",
+      html_report: "backstop_data/html_report",
+      ci_report: "backstop_data/ci_report"
     },
-    "asyncCaptureLimit": 5,
-    "asyncCompareLimit": 50,
-    "debug": true,
-    "debugWindow": false,
+    report: ["browser"],
+    engine: "playwright",
+    engineOptions: {
+      args: ["--no-sandbox"]
+    },
+    asyncCaptureLimit: 5,
+    asyncCompareLimit: 50,
+    debug: false,
+    debugWindow: false,
+    archiveReport: true,
+    scenarioLogsInReports: true
   };
-  let data = JSON.stringify(json);
-  fs.writeFileSync('backstop.json', data);
 
-})
-.catch(err => {
-    console.log(err);
-})
+  fs.writeFileSync('backstop.json', JSON.stringify(backstopConfig, null, 2));
+  console.log('backstop.json has been generated.');
+};
+
+generateBackstopConfig();
+
+module.exports = {
+  fetchData,
+  generateTextFromUrl,
+  extractLinksFromHtml,
+  extractLinksFromXml,
+  scrapWebsiteForLinks,
+  fetchInternalLinksFromSitemap,
+  fetchLinks,
+  generateBackstopConfig
+};
